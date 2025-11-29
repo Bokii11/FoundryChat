@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foundry Local - Chat</title>
+    <link rel="icon" type="image/png" href="icon.png">
+    <style>
+        /* Base Styles */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f5f5f5 100%);
+        }
+
+        /* Layout Components */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            background: #ffffff;
+            border: 2px solid #2196f3;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            height: 100vh;
+            border-radius: 16px;
+            margin: 16px auto;
+            max-width: 1100px;
+            overflow: hidden;
+        }
+
+        /* Header Styles */
+        .chat-header {
+            padding: 16px 20px;
+            background: #2196f3;
+            border-bottom: 1px solid #1976d2;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chat-header h2 {
+            color: #ffffff;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin: 0;
+            font-size: 20px;
+        }
+
+        /* Header Controls Container */
+        .header-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Model Selector Styles */
+        .model-selector {
+            padding: 8px 12px;
+            border: 1px solid #ffffff;
+            border-radius: 6px;
+            background: #1976d2;
+            color: #ffffff;
+            font-size: 13px;
+            cursor: pointer;
+            max-width: 350px;
+            min-width: 200px;
+        }
+
+        .model-selector:focus {
+            outline: none;
+            border-color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Refresh Button Styles */
+        .refresh-button {
+            padding: 8px 12px;
+            border: 1px solid #ffffff;
+            border-radius: 6px;
+            background: #1976d2;
+            color: #ffffff;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            min-width: 40px;
+        }
+
+        .refresh-button:hover {
+            background: #1565c0;
+            border-color: #ffffff;
+            transform: rotate(20deg);
+        }
+
+        .refresh-button:active {
+            transform: rotate(-20deg) scale(0.95);
+        }
+
+        .refresh-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .refresh-button.loading {
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Messages Area Styles */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            padding-bottom: 100px;
+            background: #fafafa;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f0f0f0;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background-color: #2196f3;
+            border-radius: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background-color: #1976d2;
+        }
+
+        /* Message Styles */
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-content {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin: 4px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .user .message-content {
+            background: #2196f3;
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+        }
+
+        .assistant .message-content {
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Input Area Styles */
+        .chat-input {
+            padding: 16px 20px;
+            background: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            position: sticky;
+            bottom: 0;
+            z-index: 2;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            resize: none;
+            height: 50px;
+            overflow-y: auto;
+            background: #ffffff;
+            color: #333333;
+            font-family: inherit;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+
+        .send-button {
+            padding: 12px 28px;
+            background-color: #2196f3;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .send-button:hover {
+            background-color: #1976d2;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+
+        .send-button:disabled {
+            background-color: #bdbdbd;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Clear Button Styles */
+        .clear-button {
+            padding: 8px 16px;
+            background-color: #ffffff;
+            color: #1976d2;
+            border: 1px solid #ffffff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .clear-button:hover {
+            background-color: #e3f2fd;
+        }
+
+        .clear-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Status and Error Styles */
+        .status-bar {
+            padding: 10px 20px;
+            background-color: #e3f2fd;
+            color: #1565c0;
+            text-align: center;
+            display: none;
+            font-size: 13px;
+            border-bottom: 1px solid #bbdefb;
+        }
+
+        .error-message {
+            padding: 10px 20px;
+            background-color: #ffebee;
+            color: #c62828;
+            border-radius: 4px;
+            margin: 10px 20px;
+            display: none;
+            border-left: 4px solid #ef5350;
+        }
+
+        /* Typing Indicator Animation */
+        .typing-indicator {
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: #ffd580;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Settings Styles */
+        .settings-button {
+            padding: 8px 12px;
+            border: 1px solid #ffffff;
+            border-radius: 6px;
+            background: #1976d2;
+            color: #ffffff;
+            font-size: 18px;
+            cursor: pointer;
+            min-width: 40px;
+        }
+
+        .settings-button:hover {
+            background: #1565c0;
+        }
+
+        .settings-panel {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 380px;
+            height: 100vh;
+            background: #ffffff;
+            border-left: 2px solid #2196f3;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .settings-panel.open {
+            transform: translateX(0);
+        }
+
+        .settings-panel h3 {
+            color: #1565c0;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #2196f3;
+            padding-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .settings-section {
+            margin-bottom: 20px;
+        }
+
+        .settings-section label {
+            display: block;
+            color: #424242;
+            font-size: 13px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .settings-section input,
+        .settings-section textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            background: #fafafa;
+            color: #333333;
+            font-family: monospace;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+
+        .settings-section input:focus,
+        .settings-section textarea:focus {
+            outline: none;
+            border-color: #2196f3;
+            background: #ffffff;
+        }
+
+        #current-endpoint {
+            background: #e8f5e9 !important;
+            border-color: #4caf50 !important;
+            color: #2e7d32 !important;
+        }
+
+        .settings-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-left: 3px solid #2196f3;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        #auto-endpoint-info {
+            margin-top: 5px;
+        }
+
+        .settings-info.small-text {
+            font-size: 11px;
+            margin-top: 5px;
+        }
+
+        .settings-section textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .settings-button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .settings-button-group button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background: #2196f3;
+            color: #ffffff;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .settings-button-group button:hover {
+            background: #1976d2;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+
+        .settings-info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-left: 3px solid #2196f3;
+            border-radius: 4px;
+            color: #1565c0;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        .settings-info.success {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+            color: #2e7d32;
+        }
+
+        .settings-info.error {
+            background: #ffebee;
+            border-left-color: #f44336;
+            color: #c62828;
+        }
+
+        .settings-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #757575;
+            font-size: 24px;
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-close:hover {
+            color: #424242;
+            background: #f5f5f5;
+            border-radius: 50%;
+        }
+
+        #test-connection-btn {
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .settings-panel hr {
+            border: none;
+            border-top: 2px solid #e0e0e0;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header Section -->
+        <div class="chat-header">
+            <h2 id="model-name">Foundry Chat</h2>
+            <div class="header-controls">
+                <select id="model-selector" class="model-selector" title="Select AI model">
+                    <option value="cloud">[Cloud] Azure AI Model</option>
+                </select>
+                <button id="refresh-button" class="refresh-button" title="Refresh model list">↻</button>
+                <button id="clear-button" class="clear-button" title="Clear conversation">Clear</button>
+                <button id="settings-button" class="settings-button" title="Settings">⚙️</button>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settings-panel" class="settings-panel">
+            <button class="settings-close" id="settings-close">✕</button>
+            <h3>Foundry Service Settings</h3>
+            
+            <div class="settings-section">
+                <label>📍 Currently Using:</label>
+                <textarea id="current-endpoint" readonly placeholder="Detecting..."></textarea>
+            </div>
+
+            <div class="settings-section">
+                <label>🔍 Auto-Discovered Endpoint:</label>
+                <textarea id="auto-endpoint" readonly placeholder="Scanning for local Foundry service..."></textarea>
+                <div class="settings-info" id="auto-endpoint-info">
+                    Auto-detected from Foundry Local SDK
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <label>⚙️ Manual Configuration (Advanced):</label>
+                <input type="text" id="custom-endpoint" placeholder="http://192.168.x.x:51679 or localhost:51679" />
+                <div class="settings-info small-text">
+                    Use this for remote machines or non-standard ports
+                </div>
+                <div class="settings-button-group">
+                    <button id="set-endpoint-btn">Apply</button>
+                    <button id="clear-endpoint-btn">Reset</button>
+                </div>
+                <button id="test-connection-btn">Test Connection</button>
+            </div>
+
+            <hr>
+
+            <h3>☁️ Azure Cloud AI Settings</h3>
+            
+            <div class="settings-section">
+                <label>🔑 API Key:</label>
+                <input type="password" id="cloud-api-key" placeholder="Enter your Azure AI API Key" />
+            </div>
+
+            <div class="settings-section">
+                <label>🌐 Endpoint:</label>
+                <input type="text" id="cloud-endpoint" placeholder="https://your-resource.openai.azure.com" />
+            </div>
+
+            <div class="settings-section">
+                <label>🤖 Model Name:</label>
+                <input type="text" id="cloud-model-name" placeholder="gpt-4, gpt-35-turbo, etc." />
+                <div class="settings-info small-text">
+                    Enter the deployment name from Azure OpenAI
+                </div>
+            </div>
+
+            <div class="settings-button-group">
+                <button id="save-cloud-config-btn">Save Cloud Settings</button>
+                <button id="clear-cloud-config-btn">Clear Cloud Settings</button>
+            </div>
+
+            <div class="settings-section">
+                <div id="settings-info"></div>
+            </div>
+        </div>
+
+        <!-- Status and Error Messages -->
+        <div id="status-bar" class="status-bar"></div>
+        <div id="error-message" class="error-message"></div>
+
+        <!-- Chat Messages Area -->
+        <div id="chat-messages" class="chat-messages"></div>
+
+        <!-- Input Section -->
+        <div class="chat-input">
+            <div class="input-container">
+                <textarea id="message-input" class="message-input" placeholder="Type your message..."></textarea>
+                <button id="send-button" class="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize debug logging
+        console.log('Initial script starting...');
+        console.log('window.mainAPI status:', !!window.mainAPI);
+
+        // Main application initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded');
+            console.log('window.mainAPI status after DOM loaded:', !!window.mainAPI);
+
+            // Validate mainAPI availability
+            if (!window.mainAPI) {
+                console.error('mainAPI not available in window object');
+                console.error('Full window object:', window);
+                document.getElementById('error-message').textContent = 'Error: mainAPI not available. Please check the preload script.';
+                document.getElementById('error-message').style.display = 'block';
+                return;
+            }
+
+            // Initialize UI elements
+            const messageInput = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            const chatMessages = document.getElementById('chat-messages');
+            const statusBar = document.getElementById('status-bar');
+            const errorMessage = document.getElementById('error-message');
+            const modelName = document.getElementById('model-name');
+            const modelSelector = document.getElementById('model-selector');
+            const clearButton = document.getElementById('clear-button');
+
+            // Log UI element initialization
+            console.log('UI elements initialized:', {
+                messageInput: !!messageInput,
+                sendButton: !!sendButton,
+                chatMessages: !!chatMessages,
+                statusBar: !!statusBar,
+                errorMessage: !!errorMessage,
+                modelName: !!modelName,
+                modelSelector: !!modelSelector,
+                clearButton: !!clearButton
+            });
+
+            // Initialize chat state
+            // 针对不同模型的系统提示词优化
+            let messages = [{
+                role: 'system',
+                content: `You are a helpful, harmless, and honest AI chat assistant. 
+Your responses should be:
+- Clear and concise
+- Factually accurate
+- Respectful and non-judgmental
+- Helpful in addressing the user's needs
+- Free of harmful content
+
+Respond in the same language as the user's input.
+Focus on providing direct answers without unnecessary meta-commentary.`
+            }];
+
+            // ========== FOUNDRY INITIALIZATION STATUS HANDLER ==========
+            // 监听后台的 Foundry 初始化状态
+            // Listen for Foundry initialization status from background
+            window.mainAPI.onFoundryInitStatus((status, data) => {
+                console.log('[Frontend] Foundry init status:', status, data);
+                
+                const statusDisplay = document.getElementById('status-bar');
+                
+                switch (status) {
+                  case 'ready':
+                    console.log(`[Frontend] ✓ Foundry service ready at ${data.endpoint}`);
+                    console.log(`[Frontend] Available models: ${data.modelCount}`);
+                    statusDisplay.textContent = `✓ Foundry Local ready (${data.modelCount} model(s) available)`;
+                    statusDisplay.style.color = '#66ff66';
+                    statusDisplay.style.display = 'block';
+                    
+                    // Auto-load models after service is ready
+                    setTimeout(() => {
+                      loadLocalModels(false);
+                    }, 500);
+                    break;
+                    
+                  case 'failed':
+                    console.error(`[Frontend] ✗ Foundry initialization failed: ${data.message}`);
+                    statusDisplay.textContent = `⚠ Service initialization failed. Please start Foundry Local manually.`;
+                    statusDisplay.style.color = '#ff6666';
+                    statusDisplay.style.display = 'block';
+                    break;
+                    
+                  case 'error':
+                    console.error(`[Frontend] ✗ Initialization error: ${data.message}`);
+                    statusDisplay.textContent = `⚠ Initialization error: ${data.message}`;
+                    statusDisplay.style.color = '#ff9966';
+                    statusDisplay.style.display = 'block';
+                    break;
+                }
+            });
+            
+            // Show initial loading status
+            statusBar.textContent = '⏳ Initializing Foundry Local...';
+            statusBar.style.color = '#ffcc66';
+            statusBar.style.display = 'block';
+
+            // Model Management Functions
+            let isLoadingModels = false;
+
+            async function loadLocalModels(showNotification = false) {
+                if (isLoadingModels) return;
+                isLoadingModels = true;
+                
+                try {
+                    console.log('Loading local models...');
+                    const result = await window.mainAPI.getLocalModels();
+                    console.log('Local models loaded:', result);
+                    
+                    if (result.success) {
+                        const models = result.models;
+
+                        // Clear existing options except cloud
+                        while (modelSelector.options.length > 1) {
+                            modelSelector.remove(1);
+                        }
+                        // Add local models
+                        models.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.id;
+                            // Show status indicator: 🟢 for running, 🔵 for cached
+                            const statusIcon = model.status === 'running' ? '🟢' : '🔵';
+                            // 显示格式: [Local] 🟢 Model ID
+                            // Display format: [Local] 🟢 Model ID
+                            option.textContent = `[Local] ${statusIcon} ${model.id}`;
+                            option.title = `Model: ${model.id}\nStatus: ${model.status}`;  // 悬停提示
+                            modelSelector.appendChild(option);
+                        });
+                        
+                        // Show notification if requested (e.g., after manual refresh)
+                        if (showNotification) {
+                            errorMessage.textContent = `✓ Refreshed: ${models.length} local model(s) found`;
+                            errorMessage.style.display = 'block';
+                            setTimeout(() => {
+                                if (errorMessage.textContent.includes('Refreshed:')) {
+                                    errorMessage.style.display = 'none';
+                                }
+                            }, 2000);
+                        }
+                        
+                        // On initial load, show all models but let user choose
+                        if (showNotification === false && models.length > 0) {
+                            // Show status message with available models
+                            console.log(`Found ${models.length} local model(s), auto-initializing first model...`);
+                            statusBar.textContent = `✓ Found ${models.length} local model(s). Initializing...`;
+                            statusBar.style.display = 'block';
+                            
+                            // Auto-initialize first model on startup
+                            modelSelector.value = models[0].id;
+                            const switchResult = await window.mainAPI.switchModel(models[0].id);
+                            if (switchResult.success) {
+                                statusBar.textContent = `✓ Connected to: [Local] ${switchResult.displayName || switchResult.modelName} (${switchResult.endpoint})`;
+                            } else {
+                                throw new Error(switchResult.error);
+                            }
+                        } else if (showNotification === false && models.length === 0) {
+                            console.log('No local models found, will attempt cloud model');
+                            await initializeWithCloudModel();
+                        }
+                    } else {
+                        throw new Error(result.error || 'Failed to load local models');
+                    }
+                } catch (error) {
+                    console.error('Failed to load local models:', error);
+                    if (showNotification) {
+                        errorMessage.textContent = `⚠ Error refreshing models: ${error.message}`;
+                        errorMessage.style.display = 'block';
+                    } else {
+                        console.log('Attempting cloud model initialization...');
+                        await initializeWithCloudModel();
+                    }
+                } finally {
+                    isLoadingModels = false;
+                }
+            }
+
+            // Chat Functions
+            function addMessage(text, sender) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${sender}`;
+                
+                const content = document.createElement('div');
+                content.className = 'message-content';
+                content.textContent = text;
+                
+                messageDiv.appendChild(content);
+                chatMessages.appendChild(messageDiv);
+                scrollToBottom();
+                return messageDiv;
+            }
+
+            function scrollToBottom() {
+                const lastMessage = chatMessages.lastElementChild;
+                if (lastMessage) {
+                    lastMessage.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }
+            }
+
+            function cleanModelOutput(text) {
+                if (!text) return '';
+                let cleaned = text.replace(/<\|[^>]+?\|>/g, '');
+                cleaned = cleaned.replace(/<\|endofmessage\|>/gi, '');
+                cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+                return cleaned;
+            }
+
+            async function sendMessage() {
+                const message = messageInput.value.trim();
+                if (!message) return;
+
+                addMessage(message, 'user');
+                messageInput.value = '';
+                sendButton.disabled = true;
+
+                const assistantMessage = addMessage('', 'assistant');
+                const messageContent = assistantMessage.querySelector('.message-content');
+                
+                messages.push({ role: 'user', content: message });
+                
+                try {
+                    let rawResponse = '';
+                    let displayResponse = '';
+                    
+                    window.mainAPI.removeAllChatListeners();
+                    
+                    window.mainAPI.onChatChunk((chunk) => {
+                        rawResponse += chunk;
+                        displayResponse = cleanModelOutput(rawResponse);
+                        messageContent.textContent = displayResponse;
+                        scrollToBottom();
+                    });
+
+                    window.mainAPI.onChatComplete(() => {
+                        messages.push({ role: 'assistant', content: displayResponse });
+                        sendButton.disabled = false;
+                        scrollToBottom();
+                    });
+
+                    await window.mainAPI.sendMessage(messages);
+
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    errorMessage.textContent = `Error: ${error.message}`;
+                    errorMessage.style.display = 'block';
+                    sendButton.disabled = false;
+                }
+            }
+
+            // Event Listeners
+            sendButton.addEventListener('click', sendMessage);
+            messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Clear button event listener
+            clearButton.addEventListener('click', () => {
+                // Clear messages and conversation history
+                messages = [{
+                    role: 'system',
+                    content: `You are a helpful, harmless, and honest AI chat assistant. 
+Your responses should be:
+- Clear and concise
+- Factually accurate
+- Respectful and non-judgmental
+- Helpful in addressing the user's needs
+- Free of harmful content
+
+Respond in the same language as the user's input.
+Focus on providing direct answers without unnecessary meta-commentary.`
+                }];
+                chatMessages.innerHTML = '';
+                errorMessage.textContent = '';
+                errorMessage.style.display = 'none';
+                statusBar.textContent = '';
+                statusBar.style.display = 'none';
+                messageInput.value = '';
+                messageInput.focus();
+            });
+
+            // Refresh button event listener
+            const refreshButton = document.getElementById('refresh-button');
+            refreshButton.addEventListener('click', async () => {
+                console.log('User clicked refresh button');
+                refreshButton.disabled = true;
+                refreshButton.classList.add('loading');
+                
+                try {
+                    await loadLocalModels(true); // true = show notification
+                } catch (error) {
+                    console.error('Error during manual refresh:', error);
+                    errorMessage.textContent = `Error refreshing: ${error.message}`;
+                    errorMessage.style.display = 'block';
+                } finally {
+                    refreshButton.disabled = false;
+                    refreshButton.classList.remove('loading');
+                }
+            });
+
+            // Window focus event - removed auto-refresh to save resources
+            // User can manually click refresh button when needed
+
+            modelSelector.addEventListener('change', async (e) => {
+                const selectedModel = e.target.value;
+                try {
+                    statusBar.textContent = `Loading model: ${selectedModel}...`;
+                    statusBar.style.display = 'block';
+                    
+                    messages = [{ role: 'system', content: 'You are a helpful AI chat assistant' }];
+                    chatMessages.innerHTML = '';
+                    
+                    messageInput.disabled = true;
+                    sendButton.disabled = true;
+                    refreshButton.disabled = true;
+
+                    const result = await window.mainAPI.switchModel(selectedModel);
+                    if (result.success) {
+                        const modelTypeLabel = selectedModel === 'cloud' ? '[Cloud]' : '[Local]';
+                        statusBar.textContent = `✓ Connected to: ${modelTypeLabel} ${result.displayName || result.modelName}`;
+                        statusBar.style.display = 'block';
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    console.error('Failed to switch model:', error);
+                    errorMessage.textContent = `Error switching model: ${error.message}`;
+                    errorMessage.style.display = 'block';
+                } finally {
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    refreshButton.disabled = false;
+                }
+            });
+
+            // Initialize local model
+            async function initializeWithLocalModel(modelId) {
+                try {
+                    const result = await window.mainAPI.switchModel(modelId);
+                    if (result.success) {
+                        statusBar.textContent = `✓ Local Model Connected: ${result.modelName}`;
+                        statusBar.style.display = 'block';
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize local model:', error);
+                    errorMessage.textContent = `Error initializing local model: ${error.message}`;
+                    errorMessage.style.display = 'block';
+                }
+            }
+
+            // Initialize cloud model
+            async function initializeWithCloudModel() {
+                try {
+                    const result = await window.mainAPI.switchModel('cloud');
+                    if (result.success) {
+                        statusBar.textContent = `✓ Cloud Model Connected: ${result.modelName}`;
+                        statusBar.style.display = 'block';
+                    } else {
+                        errorMessage.textContent = `Cloud model not available: ${result.error}`;
+                        errorMessage.style.display = 'block';
+                        statusBar.textContent = '⚠ No models available. Please check Foundry Local or configure cloud credentials.';
+                        statusBar.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Failed to initialize cloud model:', error);
+                    errorMessage.textContent = `Error initializing cloud model: ${error.message}`;
+                    errorMessage.style.display = 'block';
+                }
+            }
+
+                        // Settings Panel Management
+            const settingsButton = document.getElementById('settings-button');
+            const settingsPanel = document.getElementById('settings-panel');
+            const settingsClose = document.getElementById('settings-close');
+            const currentEndpointText = document.getElementById('current-endpoint');
+            const autoEndpointText = document.getElementById('auto-endpoint');
+            const customEndpointInput = document.getElementById('custom-endpoint');
+            const setEndpointBtn = document.getElementById('set-endpoint-btn');
+            const clearEndpointBtn = document.getElementById('clear-endpoint-btn');
+            const testConnectionBtn = document.getElementById('test-connection-btn');
+            const settingsInfo = document.getElementById('settings-info');
+            
+            // Cloud configuration elements
+            const cloudApiKeyInput = document.getElementById('cloud-api-key');
+            const cloudEndpointInput = document.getElementById('cloud-endpoint');
+            const cloudModelNameInput = document.getElementById('cloud-model-name');
+            const saveCloudConfigBtn = document.getElementById('save-cloud-config-btn');
+            const clearCloudConfigBtn = document.getElementById('clear-cloud-config-btn');
+
+            // Load and display current configuration
+            async function loadFoundryConfig() {
+                try {
+                    const config = await window.mainAPI.getFoundryConfig();
+                    
+                    // Display current endpoint being used (priority: custom > auto-discovered)
+                    const currentEndpoint = config.currentEndpoint || 'Not configured';
+                    currentEndpointText.value = currentEndpoint;
+                    
+                    // Display auto-discovered endpoint
+                    const autoEndpoint = config.autoDiscovered || 'Detecting service...';
+                    autoEndpointText.value = autoEndpoint;
+                    
+                    // Update status color
+                    if (config.currentEndpoint) {
+                        currentEndpointText.style.borderColor = '#4ade80';
+                    } else {
+                        currentEndpointText.style.borderColor = '#f87171';
+                    }
+                    
+                    if (config.custom) {
+                        customEndpointInput.value = config.custom;
+                    }
+                    
+                    console.log('[DEBUG] Foundry config loaded:', config);
+                } catch (error) {
+                    console.error('Failed to load Foundry config:', error);
+                }
+            }
+
+            // Show settings info message
+            function showSettingsInfo(message, isSuccess = false) {
+                settingsInfo.textContent = message;
+                settingsInfo.className = `settings-info ${isSuccess ? 'success' : 'error'}`;
+            }
+
+            // Settings panel toggle
+            settingsButton.addEventListener('click', () => {
+                settingsPanel.classList.toggle('open');
+                if (settingsPanel.classList.contains('open')) {
+                    loadFoundryConfig();
+                    loadCloudConfig();  // Load cloud config when opening settings
+                }
+            });
+
+            settingsClose.addEventListener('click', () => {
+                settingsPanel.classList.remove('open');
+            });
+
+            // Set custom endpoint
+            setEndpointBtn.addEventListener('click', async () => {
+                const endpoint = customEndpointInput.value.trim();
+                if (!endpoint) {
+                    showSettingsInfo('Please enter an endpoint URL');
+                    return;
+                }
+
+                try {
+                    setEndpointBtn.disabled = true;
+                    const result = await window.mainAPI.setFoundryEndpoint(endpoint);
+                    if (result.success) {
+                        showSettingsInfo(result.message, true);
+                        await loadLocalModels();  // Refresh models with new endpoint
+                    } else {
+                        showSettingsInfo(`Error: ${result.error}`);
+                    }
+                } finally {
+                    setEndpointBtn.disabled = false;
+                }
+            });
+
+            // Clear custom endpoint
+            clearEndpointBtn.addEventListener('click', async () => {
+                try {
+                    clearEndpointBtn.disabled = true;
+                    const result = await window.mainAPI.setFoundryEndpoint(null);
+                    customEndpointInput.value = '';
+                    showSettingsInfo(result.message, true);
+                    await loadLocalModels();  // Refresh models
+                } finally {
+                    clearEndpointBtn.disabled = false;
+                }
+            });
+
+            // Test connection
+            testConnectionBtn.addEventListener('click', async () => {
+                try {
+                    testConnectionBtn.disabled = true;
+                    testConnectionBtn.textContent = 'Testing...';
+                    
+                    const endpoint = customEndpointInput.value.trim();
+                    const result = await window.mainAPI.testFoundryConnection(endpoint || undefined);
+                    
+                    if (result.success) {
+                        showSettingsInfo(`${result.message}`, true);
+                    } else {
+                        showSettingsInfo(`Connection failed: ${result.error}`);
+                    }
+                } finally {
+                    testConnectionBtn.disabled = false;
+                    testConnectionBtn.textContent = 'Test Connection';
+                }
+            });
+
+            // ========== CLOUD CONFIGURATION HANDLERS ==========
+            
+            // Load cloud configuration
+            async function loadCloudConfig() {
+                try {
+                    const config = await window.mainAPI.getCloudConfig();
+                    if (config) {
+                        cloudApiKeyInput.value = config.apiKey || '';
+                        cloudEndpointInput.value = config.endpoint || '';
+                        cloudModelNameInput.value = config.modelName || '';
+                    }
+                } catch (error) {
+                    console.error('Failed to load cloud config:', error);
+                }
+            }
+
+            // Save cloud configuration
+            saveCloudConfigBtn.addEventListener('click', async () => {
+                const apiKey = cloudApiKeyInput.value.trim();
+                const endpoint = cloudEndpointInput.value.trim();
+                const modelName = cloudModelNameInput.value.trim();
+
+                if (!apiKey || !endpoint || !modelName) {
+                    showSettingsInfo('Please fill in all cloud configuration fields');
+                    return;
+                }
+
+                try {
+                    saveCloudConfigBtn.disabled = true;
+                    saveCloudConfigBtn.textContent = 'Saving...';
+                    
+                    const result = await window.mainAPI.saveCloudConfig({
+                        apiKey,
+                        endpoint,
+                        modelName
+                    });
+
+                    if (result.success) {
+                        showSettingsInfo('Cloud settings saved successfully! Restart app to apply changes.', true);
+                        // Refresh model list to show cloud option
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showSettingsInfo(`Error: ${result.error}`);
+                    }
+                } catch (error) {
+                    showSettingsInfo(`Error: ${error.message}`);
+                } finally {
+                    saveCloudConfigBtn.disabled = false;
+                    saveCloudConfigBtn.textContent = 'Save Cloud Settings';
+                }
+            });
+
+            // Clear cloud configuration
+            clearCloudConfigBtn.addEventListener('click', async () => {
+                if (!confirm('Are you sure you want to clear cloud configuration?')) {
+                    return;
+                }
+
+                try {
+                    clearCloudConfigBtn.disabled = true;
+                    const result = await window.mainAPI.clearCloudConfig();
+
+                    if (result.success) {
+                        cloudApiKeyInput.value = '';
+                        cloudEndpointInput.value = '';
+                        cloudModelNameInput.value = '';
+                        showSettingsInfo('Cloud settings cleared. Restart app to apply changes.', true);
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        showSettingsInfo(`Error: ${result.error}`);
+                    }
+                } catch (error) {
+                    showSettingsInfo(`Error: ${error.message}`);
+                } finally {
+                    clearCloudConfigBtn.disabled = false;
+                }
+            });
+
+            // Initial setup
+            loadLocalModels();
+        });
+    </script>
+</body>
+</html>
